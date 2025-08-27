@@ -56,97 +56,47 @@ def setup_azure_openai():
 # Setup Azure OpenAI
 client, deployment = setup_azure_openai()
 
-# ---------- Enhanced PDF text extraction with OCR ----------
+# ---------- Simplified PDF text extraction (no OCR) ----------
 def extract_pdf_text_per_page(pdf_path: str, use_ocr: bool = True) -> List[str]:
     """
-    Extract text per page using PyMuPDF (fitz) with OCR fallback.
+    Extract text per page using PyMuPDF (fitz) - basic text extraction only.
     """
     try:
         import fitz  # PyMuPDF
-        # OCR is optional - if packages not available, skip OCR
-        ocr_available = False
-        if use_ocr:
-            try:
-                import pytesseract
-                from PIL import Image
-                import io
-                ocr_available = True
-            except ImportError:
-                print("OCR packages not available, using text extraction only")
-                ocr_available = False
     except ImportError as e:
-        print(f"Import error: {e}")
+        print(f"PyMuPDF import error: {e}")
         return []
 
-    doc = fitz.open(pdf_path)
-    pages = []
-    
-    for page_num, page in enumerate(doc, 1):
-        # First, try to extract text directly
-        text = page.get_text("text")
+    try:
+        doc = fitz.open(pdf_path)
+        pages = []
         
-        # If no text found or very little text, try OCR (if available)
-        if ocr_available and use_ocr and (not text.strip() or len(text.strip()) < 50):
-            try:
-                # Convert page to image
-                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # 2x zoom for better OCR
-                img_data = pix.tobytes("png")
-                img = Image.open(io.BytesIO(img_data))
-                
-                # Perform OCR
-                ocr_text = pytesseract.image_to_string(img, lang='eng')
-                
-                # Use OCR text if it's longer than direct extraction
-                if len(ocr_text.strip()) > len(text.strip()):
-                    text = ocr_text
-                    
-            except Exception as ocr_error:
-                print(f"OCR failed for page {page_num}: {ocr_error}")
-                # Fallback to blocks method
+        for page_num, page in enumerate(doc, 1):
+            # Extract text directly
+            text = page.get_text("text")
+            
+            # If no text found, try blocks method
+            if not text.strip():
                 text_blocks = page.get_text("blocks")
                 if isinstance(text_blocks, list):
                     text = "\n".join([b[4] for b in text_blocks if len(b) >= 5 and isinstance(b[4], str)])
-        
-        # Fallback to blocks if still no text
-        if not text.strip():
-            text_blocks = page.get_text("blocks")
-            if isinstance(text_blocks, list):
-                text = "\n".join([b[4] for b in text_blocks if len(b) >= 5 and isinstance(b[4], str)])
-        
-        pages.append(text.strip())
-    
-    doc.close()
-    return pages
-
-# ---------- Alternative OCR method using pdf2image ----------
-def extract_pdf_text_with_pdf2image(pdf_path: str) -> List[str]:
-    """
-    Alternative OCR method using pdf2image + pytesseract
-    """
-    try:
-        from pdf2image import convert_from_path
-        import pytesseract
-    except ImportError as e:
-        print(f"pdf2image/pytesseract not available: {e}")
-        # Fallback to basic text extraction
-        return extract_pdf_text_per_page(pdf_path, use_ocr=False)
-    
-    try:
-        # Convert PDF to images
-        images = convert_from_path(pdf_path, dpi=200)
-        
-        pages = []
-        for i, image in enumerate(images, 1):
-            # Perform OCR on the image
-            text = pytesseract.image_to_string(image, lang='eng')
-            pages.append(text.strip())
             
+            pages.append(text.strip())
+        
+        doc.close()
         return pages
         
     except Exception as e:
-        print(f"Error in pdf2image OCR: {e}")
-        # Fallback to basic text extraction
-        return extract_pdf_text_per_page(pdf_path, use_ocr=False)
+        print(f"Error extracting PDF text: {e}")
+        return []
+
+# ---------- Fallback method (same as above) ----------
+def extract_pdf_text_with_pdf2image(pdf_path: str) -> List[str]:
+    """
+    Fallback method - same as basic extraction since OCR is not available
+    """
+    print("pdf2image OCR not available, using basic text extraction")
+    return extract_pdf_text_per_page(pdf_path, use_ocr=False)
 
 # ---------- Prompt templates ----------
 JSON_PROMPT = """You are an assistant that answers questions strictly from the provided PDF content.

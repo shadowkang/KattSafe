@@ -63,10 +63,17 @@ def extract_pdf_text_per_page(pdf_path: str, use_ocr: bool = True) -> List[str]:
     """
     try:
         import fitz  # PyMuPDF
+        # OCR is optional - if packages not available, skip OCR
+        ocr_available = False
         if use_ocr:
-            import pytesseract
-            from PIL import Image
-            import io
+            try:
+                import pytesseract
+                from PIL import Image
+                import io
+                ocr_available = True
+            except ImportError:
+                print("OCR packages not available, using text extraction only")
+                ocr_available = False
     except ImportError as e:
         print(f"Import error: {e}")
         return []
@@ -78,8 +85,8 @@ def extract_pdf_text_per_page(pdf_path: str, use_ocr: bool = True) -> List[str]:
         # First, try to extract text directly
         text = page.get_text("text")
         
-        # If no text found or very little text, try OCR
-        if use_ocr and (not text.strip() or len(text.strip()) < 50):
+        # If no text found or very little text, try OCR (if available)
+        if ocr_available and use_ocr and (not text.strip() or len(text.strip()) < 50):
             try:
                 # Convert page to image
                 pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # 2x zoom for better OCR
@@ -120,8 +127,9 @@ def extract_pdf_text_with_pdf2image(pdf_path: str) -> List[str]:
         from pdf2image import convert_from_path
         import pytesseract
     except ImportError as e:
-        print(f"Required packages missing: {e}")
-        return []
+        print(f"pdf2image/pytesseract not available: {e}")
+        # Fallback to basic text extraction
+        return extract_pdf_text_per_page(pdf_path, use_ocr=False)
     
     try:
         # Convert PDF to images
@@ -137,7 +145,8 @@ def extract_pdf_text_with_pdf2image(pdf_path: str) -> List[str]:
         
     except Exception as e:
         print(f"Error in pdf2image OCR: {e}")
-        return []
+        # Fallback to basic text extraction
+        return extract_pdf_text_per_page(pdf_path, use_ocr=False)
 
 # ---------- Prompt templates ----------
 JSON_PROMPT = """You are an assistant that answers questions strictly from the provided PDF content.

@@ -2,12 +2,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Copy, RefreshCw, AlertCircle } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 
-const ChatInterface = ({ selectedPdf, ocrMethod, apiStatus }) => {
+const ChatInterface = ({ selectedPdf, ocrMethod, apiStatus, apiUrl }) => {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Use provided API URL or fallback to localhost
+  const API_URL = apiUrl || 'http://localhost:8000';
 
   // Sample questions for quick testing
   const sampleQuestions = [
@@ -56,7 +59,7 @@ const ChatInterface = ({ selectedPdf, ocrMethod, apiStatus }) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/ask', {
+      const response = await fetch(`${API_URL}/ask`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

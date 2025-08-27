@@ -11,6 +11,9 @@ function App() {
   const [selectedPdf, setSelectedPdf] = useState('harness_gear');
   const [ocrMethod, setOcrMethod] = useState('pymupdf');
 
+  // Get API URL from environment variable
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
   // Check API status on component mount
   useEffect(() => {
     checkApiStatus();
@@ -18,7 +21,7 @@ function App() {
 
   const checkApiStatus = async () => {
     try {
-      const response = await fetch('/health');
+      const response = await fetch(`${API_URL}/health`);
       if (response.ok) {
         const data = await response.json();
         setApiStatus('connected');
@@ -54,6 +57,7 @@ function App() {
           selectedPdf={selectedPdf}
           ocrMethod={ocrMethod}
           apiStatus={apiStatus}
+          apiUrl={API_URL}
         />
       </div>
     </div>
